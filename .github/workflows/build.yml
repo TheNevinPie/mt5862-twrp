@@ -56,7 +56,7 @@ jobs:
               # Lunch and build
               lunch omni_${DEVICE}-userdebug
               make -j$(nproc --all) recoveryimage
-EOF
+         EOF
 
       - name: Package recovery image
         run: |
