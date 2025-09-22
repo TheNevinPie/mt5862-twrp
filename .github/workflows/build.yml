@@ -52,7 +52,7 @@ jobs:
               export DEVICE_PATH=$(pwd)
               lunch omni_${DEVICE}-userdebug
               make -j$(nproc --all) recoveryimage
-EOF
+          EOF
 
       - name: Package recovery image
         run: |
