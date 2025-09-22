@@ -1,0 +1,39 @@
+# Android fstab file.
+#<src>                                                  <mnt_point>         <type>    <mnt_flags>                                          <fs_mgr_flags>
+# The filesystem that contains the filesystem checker binary (typically /system) cannot
+# specify MF_CHECK, and must come before any filesystems that do specify MF_CHECK
+
+## warning: in order to support sdcard and usb for ota-upgrade, we add the mnt_point for "usb"
+
+/dev/block/mmcblk1p1                                   /sdcard              vfat      defaults                                              defaults
+/dev/block/sda1                                        /usb                 vfat      defaults                                              defaults
+/dev/block/platform/mstar_mci.0/by-name/system         /                    ext4      ro                                                    wait
+/dev/block/platform/mstar_mci.0/by-name/userdata       /data                ext4      noatime,nosuid,nodev                                  wait,block_validity,nodiscard,data=ordered,journal_checksum
+/dev/block/platform/mstar_mci.0/by-name/cache          /cache               ext4      noatime,nosuid,nodev                                  wait,block_validity,nodiscard,data=ordered,journal_checksum
+/dev/block/platform/mstar_mci.0/by-name/vendor         /vendor              ext4      ro                                                    wait
+/dev/block/platform/mstar_mci.0/by-name/factory_a      /factory             ext4      ro                                                    wait
+/dev/block/platform/mstar_mci.0/by-name/tvservice      /vendor/tvservice           ext4      ro                                                    wait
+/dev/block/platform/mstar_mci.0/by-name/tvconfig       /vendor/tvconfig            ext4      rw                                                    wait
+/dev/block/platform/mstar_mci.0/by-name/tvcertificate  /vendor/tvcertificate       ext4      noatime,nosuid,nodev                                  wait,block_validity,nodiscard,data=ordered,journal_checksum
+/dev/block/platform/mstar_mci.0/by-name/linux_rootfs_a /vendor/linux_rootfs squashfs  ro                                                    wait
+/dev/block/platform/mstar_mci.0/by-name/3rd_a          /vendor/3rd          squashfs  ro                                                    wait
+/dev/block/platform/mstar_mci.0/by-name/3rd_rw         /data/vendor/3rd_rw  ext4      defaults,noatime                                      wait
+/dev/block/mmcblk0boot0                                /boot1               emmc      defaults                                              defaults
+/dev/block/mmcblk0boot1                                /boot2               emmc      defaults                                              defaults
+/dev/block/platform/mstar_mci.0/by-name/MBOOT          /MBOOT               emmc      defaults                                              defaults
+/dev/block/platform/mstar_mci.0/by-name/MPOOL          /MPOOL               emmc      defaults                                              defaults
+/dev/block/platform/mstar_mci.0/by-name/misc           /misc                emmc      defaults                                              defaults
+/dev/block/platform/mstar_mci.0/by-name/vbmeta         /vbmeta              emmc      defaults                                              defaults
+/dev/block/platform/mstar_mci.0/by-name/recovery       /recovery            emmc      defaults                                              defaults
+/dev/block/platform/mstar_mci.0/by-name/boot           /boot                emmc      defaults                                              defaults
+/dev/block/platform/mstar_mci.0/by-name/tee             /tee                emmc      defaults                                              defaults
+/dev/block/platform/mstar_mci.0/by-name/RTPM           /RTPM                emmc      defaults                                              defaults
+/dev/block/platform/mstar_mci.0/by-name/dtb            /dtb                 emmc      defaults                                              defaults
+/dev/block/platform/mstar_mci.0/by-name/dtbo           /dtbo                emmc      defaults                                              defaults
+/dev/block/platform/mstar_mci.0/by-name/optee          /optee               emmc      defaults                                              defaults
+/dev/block/platform/mstar_mci.0/by-name/armfw          /armfw               emmc      defaults                                              defaults
+/dev/block/platform/mstar_mci.0/by-name/frc            /frc                 emmc      defaults                                              defaults
+/devices/platform/mstar_fcie*                          auto                 auto      defaults                                              encryptable=true,voldmanaged=usb:auto
+/devices/platform/mstar_sdio*                          auto                 auto      defaults                                              encryptable=true,voldmanaged=usb:auto
+/devices/Mstar-ehci*                                   auto                 auto      defaults                                              encryptable=true,voldmanaged=usb:auto
+/devices/Mstar-xhci*                                   auto                 auto      defaults                                              encryptable=true,voldmanaged=usb:auto
