@@ -63,10 +63,11 @@ jobs:
            $HOME/twrp/TWRP-$version-$DEVICE-$(date +"%Y%m%d")-Unofficial.img
 
     - name: Upload artifact
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: TWRP-Recovery
         path: $HOME/twrp/*.img
+
 
     - name: Create GitHub Release (Optional)
       uses: softprops/action-gh-release@v1
