@@ -1,4 +1,4 @@
-name: Build TWRP Recovery
+name: Build TWRP
 
 on:
   push:
@@ -32,11 +32,11 @@ jobs:
           wget -q ${TWRP_SOURCE} -O $HOME/twrp.tar.xz
           tar -xJf $HOME/twrp.tar.xz --directory $HOME/twrp/ && rm $HOME/twrp.tar.xz
 
-      - name: Copy current repo into TWRP source
+      - name: Copy current repo into TWRP source (inside Docker)
         run: |
           cp -r $GITHUB_WORKSPACE/* $HOME/twrp/
 
-      - name: Run build inside Docker
+      - name: Build TWRP in Docker
         run: |
           docker pull fr3akyphantom/droid-builder:latest
           docker run --rm -i \
@@ -48,11 +48,15 @@ jobs:
             fr3akyphantom/droid-builder bash << 'EOF'
               cd /home/builder/twrp
               source build/envsetup.sh
-              # Use current directory as device tree
-              export DEVICE_PATH=$(pwd)
+
+              # Copy flat repo into device path expected by build system
+              mkdir -p device/MediaTek/mt5862
+              cp -r ./* device/MediaTek/mt5862/
+
+              # Lunch and build
               lunch omni_${DEVICE}-userdebug
               make -j$(nproc --all) recoveryimage
-          EOF
+EOF
 
       - name: Package recovery image
         run: |
