@@ -1,0 +1,1 @@
+[![Build TWRP Recovery](https://github.com/TheNevinPie/mt5862-twrp/actions/workflows/build.yml/badge.svg)](https://github.com/TheNevinPie/mt5862-twrp/actions/workflows/build.yml)
