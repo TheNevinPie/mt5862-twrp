@@ -1,0 +1,74 @@
+name: Build TWRP Recovery
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  build:
+    runs-on: ubuntu-20.04
+
+    env:
+      TWRP_SOURCE: "https://github.com/PhantomZone54/twrp_sources_norepo/releases/download/v3.3.1-20200222/MinimalOmniRecovery-twrp-6.0-norepo-20200222.tar.xz"
+      BUILD_FLAVOR: "eng"
+      USERNAME: "TheNevinPie"
+      REPO_URL: "mt5862-twrp"
+      BRAND: "MediaTek"
+      DEVICE: "mt5862"
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    - name: Install dependencies
+      run: |
+        sudo apt update
+        sudo apt install -y docker.io wget xz-utils git
+
+    - name: Prepare TWRP sources
+      run: |
+        mkdir -p $HOME/twrp
+        wget -q $TWRP_SOURCE -O $HOME/twrp/twrp.tar.xz
+        tar -xJf $HOME/twrp/twrp.tar.xz --directory $HOME/twrp/
+        rm $HOME/twrp/twrp.tar.xz
+
+    - name: Clone device tree and recovery
+      run: |
+        cd $HOME/twrp
+        git clone https://github.com/$USERNAME/$REPO_URL.git device/$BRAND/$DEVICE
+        rm -rf bootable/recovery
+        git clone https://github.com/omnirom/android_bootable_recovery -b android-9.0 --depth 1 bootable/recovery
+
+    - name: Build recovery inside Docker
+      run: |
+        cd $HOME/twrp
+        docker run --rm -i \
+          -e USER_ID=$(id -u) -e GROUP_ID=$(id -g) \
+          -v "$(pwd):/home/builder/twrp/:rw,z" \
+          -v "${HOME}/.ccache:/srv/ccache:rw,z" \
+          fr3akyphantom/droid-builder bash << 'EOF'
+        cd /home/builder/twrp/
+        source build/envsetup.sh
+        lunch omni_mt5862-$BUILD_FLAVOR
+        make -j$(nproc --all) recoveryimage
+        EOF
+
+    - name: Save recovery image
+      run: |
+        version=$(grep "define TW_MAIN_VERSION_STR" bootable/recovery/variables.h | cut -d '"' -f2)
+        cp $HOME/twrp/out/target/product/$DEVICE/recovery.img \
+           $HOME/twrp/TWRP-$version-$DEVICE-$(date +"%Y%m%d")-Unofficial.img
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: TWRP-Recovery
+        path: $HOME/twrp/*.img
+
+    - name: Create GitHub Release (Optional)
+      uses: softprops/action-gh-release@v1
+      with:
+        files: $HOME/twrp/*.img
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
