@@ -1,4 +1,4 @@
-name: Build TWRP Recovery
+name: Build TWRP recovery
 
 on:
   push:
@@ -6,67 +6,56 @@ on:
       - master
   workflow_dispatch:
 
+env:
+  USERNAME: thenevinpie
+  REPO_URL: mt5862-twrp
+  BRAND: MediaTek
+  DEVICE: mt5862
+
 jobs:
   build:
     runs-on: self-hosted
 
-    env:
-      TWRP_SOURCE: "https://github.com/PhantomZone54/twrp_sources_norepo/releases/download/v3.3.1-20200222/MinimalOmniRecovery-twrp-6.0-norepo-20200222.tar.xz"
-      USERNAME: "TheNevinPie"
-      REPO_URL: "mt5862-twrp"
-      BRAND: "MediaTek"
-      DEVICE: "mt5862"
-      BUILD_FLAVOR: "userdebug"
-      TARGET_SCREEN_WIDTH: "1366"
-      TARGET_SCREEN_HEIGHT: "768"
-      TW_THEME: "landscape_mdpi"
-
     steps:
-      - name: Checkout
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Prepare build dir
+      - name: Set up environment
         run: |
           mkdir -p $HOME/twrp
-          cd $HOME/twrp
-          wget -q ${TWRP_SOURCE} -O twrp.tar.xz
-          tar -xJf twrp.tar.xz --directory $HOME/twrp/ && rm twrp.tar.xz
+          TWRP_SOURCE="https://github.com/PhantomZone54/twrp_sources_norepo/releases/download/v3.3.1-20200222/MinimalOmniRecovery-twrp-6.0-norepo-20200222.tar.xz"
+          wget -q ${TWRP_SOURCE} -O $HOME/twrp.tar.xz
+          tar -xJf $HOME/twrp.tar.xz --directory $HOME/twrp/ && rm $HOME/twrp.tar.xz
 
-      - name: Clone device tree and recovery
+      - name: Clone device tree
         run: |
-          cd $HOME/twrp
-          rm -rf device/$BRAND/$DEVICE
-          git clone https://github.com/$USERNAME/$REPO_URL.git device/$BRAND/$DEVICE
+          cd $HOME/twrp/
+          rm -rf device/${BRAND}/${DEVICE} || true
+          git clone https://github.com/${USERNAME}/${REPO_URL}.git device/${BRAND}/${DEVICE}
           rm -rf bootable/recovery
           git clone https://github.com/omnirom/android_bootable_recovery -b android-9.0 --depth 1 bootable/recovery
 
-      - name: Build recovery image
+      - name: Run build inside Docker
         run: |
           docker run --rm -i \
-            -e USER_ID=$(id -u) \
-            -e GROUP_ID=$(id -g) \
-            -e TARGET_SCREEN_WIDTH=${TARGET_SCREEN_WIDTH} \
-            -e TARGET_SCREEN_HEIGHT=${TARGET_SCREEN_HEIGHT} \
-            -e TW_THEME=${TW_THEME} \
-            -v "$(pwd):/home/builder/twrp/:rw,z" \
-            -v "${HOME}/.ccache:/srv/ccache:rw,z" \
+            -e USER_ID=$(id -u) -e GROUP_ID=$(id -g) \
+            -v "$HOME/twrp:/home/builder/twrp/:rw,z" \
+            -v "$HOME/.ccache:/srv/ccache:rw,z" \
             fr3akyphantom/droid-builder bash << 'EOF'
               cd /home/builder/twrp/
               source build/envsetup.sh
-              lunch omni_${DEVICE}-${BUILD_FLAVOR}
-              echo "Width=$TARGET_SCREEN_WIDTH, Height=$TARGET_SCREEN_HEIGHT, Theme=$TW_THEME"
+              lunch omni_${DEVICE}-userdebug
               make -j$(nproc --all) recoveryimage
           EOF
 
-      - name: Copy output
+      - name: Package output
         run: |
-          cd $HOME/twrp
-          version=$(grep "define TW_MAIN_VERSION_STR" bootable/recovery/variables.h | cut -d '"' -f2)
-          cp $HOME/twrp/out/target/product/$DEVICE/recovery.img \
-             $HOME/twrp/TWRP-$version-$DEVICE-$(date +"%Y%m%d")-Unofficial.img
+          cd $HOME/twrp/
+          version=$(grep 'define TW_MAIN_VERSION_STR' bootable/recovery/variables.h | cut -d '"' -f2)
+          cp out/target/product/${DEVICE}/recovery.img TWRP-${version}-${DEVICE}-$(date +"%Y%m%d")-Unofficial.img
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: TWRP-Recovery
+          name: twrp-${{ env.DEVICE }}
           path: $HOME/twrp/*.img
