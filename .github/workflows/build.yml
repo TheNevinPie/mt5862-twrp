@@ -1,69 +1,62 @@
-name: Build TWRP
+name: Build TWRP Recovery
 
 on:
   push:
-    branches:
-      - master
+    branches: [master]
+  pull_request:
+    branches: [master]
   workflow_dispatch:
-
-env:
-  DEVICE: mt5862
-  USERNAME: thenevinpie
-  REPO_URL: mt5862-twrp
-  BRAND: MediaTek
 
 jobs:
   build:
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
+
+    env:
+      BRAND: "MediaTek"
+      DEVICE: "mt5862"
+      USERNAME: ${{ github.repository_owner }}
+      REPO_URL: ${{ github.event.repository.name }}
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+    - name: Checkout repository
+      uses: actions/checkout@v4
 
-      - name: Fix permissions and prepare directories
-        run: |
-          mkdir -p $HOME/twrp
-          mkdir -p $HOME/.ccache
-          sudo chown -R $USER:$USER $HOME/twrp $HOME/.ccache
+    - name: Set up Docker Build Environment
+      run: docker pull fr3akyphantom/droid-builder:latest
 
-      - name: Prepare TWRP source
-        run: |
-          rm -rf $HOME/twrp
-          TWRP_SOURCE="https://github.com/PhantomZone54/twrp_sources_norepo/releases/download/v3.3.1-20200222/MinimalOmniRecovery-twrp-6.0-norepo-20200222.tar.xz"
-          wget -q ${TWRP_SOURCE} -O $HOME/twrp.tar.xz
-          tar -xJf $HOME/twrp.tar.xz --directory $HOME/ && rm $HOME/twrp.tar.xz
+    - name: Prepare TWRP Source
+      run: |
+        mkdir -p $HOME/twrp
+        # Use Marshmallow-based device source by default
+        TWRP_SOURCE="https://github.com/PhantomZone54/twrp_sources_norepo/releases/download/v3.3.1-20200222/MinimalOmniRecovery-twrp-6.0-norepo-20200222.tar.xz"
+        wget -q ${TWRP_SOURCE} -O $HOME/twrp.tar.xz
+        tar -xJf $HOME/twrp.tar.xz --directory $HOME/twrp/
+        rm $HOME/twrp.tar.xz
 
-      - name: Copy device tree into TWRP source
-        run: |
-          mkdir -p $HOME/twrp/device/MediaTek/mt5862
-          cp -r $GITHUB_WORKSPACE/* $HOME/twrp/device/MediaTek/mt5862/
+    - name: Clone Device Tree
+      run: |
+        cd $HOME/twrp/
+        git clone https://github.com/${{ env.USERNAME }}/${{ env.REPO_URL }}.git device/${{ env.BRAND }}/${{ env.DEVICE }}
+        rm -rf bootable/recovery
+        git clone https://github.com/omnirom/android_bootable_recovery -b android-9.0 --depth 1 bootable/recovery
 
-      - name: Build TWRP in Docker
-        run: |
-          docker pull fr3akyphantom/droid-builder:latest
-          docker run --rm -i \
-            -e DEVICE=${{ env.DEVICE }} \
-            -e USERNAME=${{ env.USERNAME }} \
-            -e REPO_URL=${{ env.REPO_URL }} \
-            -e BRAND=${{ env.BRAND }} \
-            -v "$HOME/twrp:/home/builder/twrp:rw" \
-            -v "$HOME/.ccache:/srv/ccache:rw" \
-            fr3akyphantom/droid-builder bash << 'EOF'
-              cd /home/builder/twrp
-              source build/envsetup.sh
+    - name: Build TWRP Recovery
+      run: |
+        cd $HOME/twrp/
+        docker run --rm -i -e USER_ID=$(id -u) -e GROUP_ID=$(id -g) \
+          -v "$(pwd):/home/builder/twrp/:rw,z" \
+          -v "${HOME}/.ccache:/srv/ccache:rw,z" \
+          fr3akyphantom/droid-builder bash << EOF
+        cd /home/builder/twrp/
+        source build/envsetup.sh
+        BUILD_FLAVOR="eng"
+        lunch omni_${{ env.DEVICE }}-\$BUILD_FLAVOR
+        make -j\$(nproc --all) recoveryimage
+        exit
+        EOF
 
-              lunch omni_${DEVICE}-userdebug
-              make -j$(nproc --all) recoveryimage
-          EOF
-
-      - name: Package recovery image
-        run: |
-          cd $HOME/twrp
-          version=$(grep 'define TW_MAIN_VERSION_STR' bootable/recovery/variables.h | cut -d '"' -f2)
-          cp out/target/product/${DEVICE}/recovery.img TWRP-${version}-${DEVICE}-$(date +"%Y%m%d")-Unofficial.img
-
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: twrp-${{ env.DEVICE }}
-          path: $HOME/twrp/*.img
+    - name: Upload Recovery Image Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: twrp-recovery
+        path: $HOME/twrp/out/target/product/${{ env.DEVICE }}/recovery.img
