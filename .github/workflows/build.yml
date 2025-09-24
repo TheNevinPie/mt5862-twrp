@@ -36,13 +36,17 @@ jobs:
         run: |
           cp -r $GITHUB_WORKSPACE/* $HOME/twrp/
 
+      - name: Fix permissions for Docker
+        run: |
+          sudo chown -R 1000:1000 $HOME/twrp $HOME/.ccache # or use $(id -u):$(id -g) if you're not UID 1000
+
       - name: Build TWRP in Docker
         run: |
           docker pull fr3akyphantom/droid-builder:latest
           docker run --rm -i \
             -e USER_ID=$(id -u) \
             -e GROUP_ID=$(id -g) \
-            -e DEVICE=${DEVICE} \
+            --user $(id -u):$(id -g) \
             -v "$HOME/twrp:/home/builder/twrp:rw" \
             -v "$HOME/.ccache:/srv/ccache:rw" \
             fr3akyphantom/droid-builder bash << 'EOF'
