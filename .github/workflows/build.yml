@@ -28,15 +28,15 @@ jobs:
 
       - name: Prepare TWRP source
         run: |
+          rm -rf $HOME/twrp
           TWRP_SOURCE="https://github.com/PhantomZone54/twrp_sources_norepo/releases/download/v3.3.1-20200222/MinimalOmniRecovery-twrp-6.0-norepo-20200222.tar.xz"
           wget -q ${TWRP_SOURCE} -O $HOME/twrp.tar.xz
-          tar -xJf $HOME/twrp.tar.xz --directory $HOME/twrp/ && rm $HOME/twrp.tar.xz
+          tar -xJf $HOME/twrp.tar.xz --directory $HOME/ && rm $HOME/twrp.tar.xz
 
-      - name: Copy device tree into TWRP source (inside Docker)
+      - name: Copy device tree into TWRP source
         run: |
-          shopt -s extglob
-          cp -r $GITHUB_WORKSPACE/!(device|out|.|..) $HOME/twrp/device/MediaTek/mt5862/
-          shopt -u extglob
+          mkdir -p $HOME/twrp/device/MediaTek/mt5862
+          cp -r $GITHUB_WORKSPACE/* $HOME/twrp/device/MediaTek/mt5862/
 
       - name: Build TWRP in Docker
         run: |
