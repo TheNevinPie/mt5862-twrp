@@ -44,29 +44,26 @@ jobs:
         run: |
           docker pull fr3akyphantom/droid-builder:latest
           docker run --rm -i \
-           -e USER_ID=$(id -u) \
-           -e GROUP_ID=$(id -g) \
-           -e DEVICE=${{ env.DEVICE }} \
-           -e USERNAME=${{ env.USERNAME }} \
-           -e REPO_URL=${{ env.REPO_URL }} \
-           -e BRAND=${{ env.BRAND }} \
-           --user $(id -u):$(id -g) \
-           -v "$HOME/twrp:/home/builder/twrp:rw" \
-           -v "$HOME/.ccache:/srv/ccache:rw" \
-           fr3akyphantom/droid-builder bash << 'EOF'
-             echo "User: $(id -u):$(id -g)"
-             ls -ld .
-             ls -ld device || true
-             ls -ld /home/builder/twrp || true
-     
-             cd /home/builder/twrp
-             source build/envsetup.sh
+            -e DEVICE=${{ env.DEVICE }} \
+            -e USERNAME=${{ env.USERNAME }} \
+            -e REPO_URL=${{ env.REPO_URL }} \
+            -e BRAND=${{ env.BRAND }} \
+            -v "$HOME/twrp:/home/builder/twrp:rw" \
+            -v "$HOME/.ccache:/srv/ccache:rw" \
+            fr3akyphantom/droid-builder bash << 'EOF'
+              echo "User: $(id -u):$(id -g)"
+              ls -ld .
+              ls -ld device || true
+              ls -ld /home/builder/twrp || true
 
-             mkdir -p device/MediaTek/mt5862
-             cp -r ./* device/MediaTek/mt5862/
+              cd /home/builder/twrp
+              source build/envsetup.sh
 
-             lunch omni_${DEVICE}-userdebug
-             make -j$(nproc --all) recoveryimage
+              mkdir -p device/MediaTek/mt5862
+              cp -r ./* device/MediaTek/mt5862/
+
+              lunch omni_${DEVICE}-userdebug
+              make -j$(nproc --all) recoveryimage
           EOF
 
       - name: Package recovery image
