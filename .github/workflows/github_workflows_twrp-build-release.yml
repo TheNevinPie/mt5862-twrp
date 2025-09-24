@@ -1,0 +1,77 @@
+name: Build & Release TWRP Recovery
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    env:
+      BRAND: ""
+      DEVICE: "mt5862"
+      USERNAME: ${{ github.repository_owner }}
+      REPO_URL: ${{ github.event.repository.name }}
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Set up Docker Build Environment
+      run: docker pull fr3akyphantom/droid-builder:latest
+
+    - name: Prepare TWRP Source
+      run: |
+        mkdir -p $HOME/twrp
+        # Use Marshmallow-based device source by default
+        TWRP_SOURCE="https://github.com/PhantomZone54/twrp_sources_norepo/releases/download/v3.3.1-20200222/MinimalOmniRecovery-twrp-6.0-norepo-20200222.tar.xz"
+        wget -q ${TWRP_SOURCE} -O $HOME/twrp.tar.xz
+        tar -xJf $HOME/twrp.tar.xz --directory $HOME/twrp/
+        rm $HOME/twrp.tar.xz
+
+    - name: Clone Device Tree
+      run: |
+        cd $HOME/twrp/
+        git clone https://github.com/${{ env.USERNAME }}/${{ env.REPO_URL }}.git device/${{ env.BRAND }}/${{ env.DEVICE }}
+        rm -rf bootable/recovery
+        git clone https://github.com/omnirom/android_bootable_recovery -b android-9.0 --depth 1 bootable/recovery
+
+    - name: Build TWRP Recovery
+      run: |
+        cd $HOME/twrp/
+        docker run --rm -i -e USER_ID=$(id -u) -e GROUP_ID=$(id -g) \
+          -v "$(pwd):/home/builder/twrp/:rw,z" \
+          -v "${HOME}/.ccache:/srv/ccache:rw,z" \
+          fr3akyphantom/droid-builder bash << EOF
+        cd /home/builder/twrp/
+        source build/envsetup.sh
+        BUILD_FLAVOR="eng"
+        lunch omni_${{ env.DEVICE }}-\$BUILD_FLAVOR
+        make -j\$(nproc --all) recoveryimage
+        exit
+        EOF
+
+    - name: Find built recovery.img
+      id: findimg
+      run: |
+        OUT_IMG="$HOME/twrp/out/target/product/${{ env.DEVICE }}/recovery.img"
+        if [ -f "$OUT_IMG" ]; then
+          echo "imgpath=$OUT_IMG" >> $GITHUB_OUTPUT
+        else
+          echo "recovery.img not found!"
+          exit 1
+        fi
+
+    - name: Create GitHub Release
+      id: create_release
+      uses: softprops/action-gh-release@v2
+      with:
+        tag_name: "auto-twrp-${{ github.run_number }}"
+        name: "Auto TWRP Build ${{ github.run_number }}"
+        draft: false
+        prerelease: false
+        files: ${{ steps.findimg.outputs.imgpath }}
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
