@@ -52,11 +52,11 @@ deploy:
   file: $HOME/twrp/*.img
   on:
     tags: false
-    repo: $$USERNAME$$/$$REPO_URL$$ # Optional: If you want to deploy on different repository
-    branch: master # Optional: Needs to be exact as the config branch
+    repo: thenevinpie/mt5862-twrp # Optional: If you want to deploy on different repository
+    branch: main # Optional: Needs to be exact as the config branch
 branches:
   only:
-    - master # Set travis builder branch(es) names
+    - main # Set travis builder branch(es) names
   except:
     - /^(?i:untagged)-.*$/
     - /^v\d+\.\d+(\.\d+)?(-\S*)?$/
